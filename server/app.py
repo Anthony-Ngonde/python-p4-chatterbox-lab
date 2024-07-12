@@ -14,13 +14,63 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
-@app.route('/messages')
+@app.route('/messages', methods = ['GET'])
 def messages():
-    return ''
+    messages = Message.query.order_by(Message.created_at.asc()).all()
+    return jsonify([message.to_dict() for message in messages]), 200
+    
 
-@app.route('/messages/<int:id>')
+@app.route('/messages/<int:id>', methods=['GET'])
 def messages_by_id(id):
-    return ''
+    message = Message.query.get_or_404(id)
+    return jsonify(message.to_dict()), 200
+
+
+@app.route('/messages', methods = ['POST'])
+def create_message():
+    data = request.get_json()
+
+    body = data.get('body')
+    username = data.get('username')
+
+    if not body or not username:
+        return jsonify({'error': 'Body and username are required'}), 400
+    
+    new_message = Message(body = body, username = username)
+
+    db.session.add(new_message)
+    db.session.commit()
+
+    return jsonify(new_message.to_dict()), 201
+
+
+
+@app.route('/messages/<int:id>', methods = ['PATCH'])
+def update_message(id):
+    data = request.get_json()
+    message = Message.query.get_or_404(id)
+
+    body = data.get('body')
+
+    if not body:
+        return jsonify({'error': 'Body is required'}), 400
+    
+    message.body = body
+    db.session.commit()
+
+    return jsonify(message.to_dict()), 200
+
+
+
+@app.route('/messages/<int:id>', methods=['DELETE'])
+def delete_message(id):
+    message = Message.query.get_or_404(id)
+    db.session.delete(message)
+    db.session.commit()
+    return '', 204
+
+
+    
 
 if __name__ == '__main__':
     app.run(port=5555)
